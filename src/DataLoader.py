@@ -43,7 +43,8 @@ class DataLoader:
         f = open(filePath + 'words.txt')
         chars = set()
         bad_samples = []
-        bad_samples_reference = ['a01-117-05-02.png', 'r06-022-03-05.png']
+        #bad_samples_reference = ['a01-117-05-02.png', 'r06-022-03-05.png']
+        bad_samples_reference = []
         for line in f:
             # ignore comment line
             if not line or line[0] == '#':
@@ -54,8 +55,9 @@ class DataLoader:
 
             # filename: part1-part2-part3 --> part1/part1-part2/part1-part2-part3.png
             fileNameSplit = lineSplit[0].split('-')
-            fileName = filePath + 'words/' + fileNameSplit[0] + '/' + fileNameSplit[0] + '-' + fileNameSplit[1] + '/' + \
-                       lineSplit[0] + '.png'
+            #fileName = filePath + 'words/' + fileNameSplit[0] + '/' + fileNameSplit[0] + '-' + fileNameSplit[1] + '/' + \
+            #           lineSplit[0] + '.png'
+            fileName = filePath + 'words/sub/' + lineSplit[0] + '.png'
 
             # GT text are columns starting at 9
             gtText = self.truncateLabel(' '.join(lineSplit[8:]), maxTextLen)
@@ -82,6 +84,9 @@ class DataLoader:
         # put words into lists
         self.trainWords = [x.gtText for x in self.trainSamples]
         self.validationWords = [x.gtText for x in self.validationSamples]
+        
+        #for ii in self.validationWords:  
+        #    print(ii)
 
         # number of randomly chosen samples per epoch for training
         self.numTrainSamplesPerEpoch = 25000

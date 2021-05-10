@@ -6,9 +6,15 @@ import argparse
 import cv2
 import editdistance
 
+from PIL import Image
+
 from DataLoader import DataLoader, Batch
 from Model import Model, DecoderType
 from SamplePreprocessor import preprocess
+
+from spellchecker import SpellChecker
+
+spell = SpellChecker(language='fr')
 
 
 class FilePaths:
@@ -16,7 +22,7 @@ class FilePaths:
     fnCharList = '../model/charList.txt'
     fnAccuracy = '../model/accuracy.txt'
     fnTrain = '../data/'
-    fnInfer = '../data/test.png'
+    fnInfer = '../data/298.png'
     fnCorpus = '../data/corpus.txt'
 
 
@@ -85,20 +91,164 @@ def validate(model, loader):
                   '"' + recognized[i] + '"')
 
     # print validation result
-    charErrorRate = numCharErr / numCharTotal
-    wordAccuracy = numWordOK / numWordTotal
+    charErrorRate = numCharErr / numCharTotal if numCharTotal != 0 else 0
+    wordAccuracy = numWordOK / numWordTotal if numWordTotal != 0 else 0
     print('Character error rate: %f%%. Word accuracy: %f%%.' % (charErrorRate * 100.0, wordAccuracy * 100.0))
     return charErrorRate
 
 
 def infer(model, fnImg):
     "recognize text in image provided by file path"
+    imagepil = Image.open(fnImg)
+
+    imgrgb = cv2.imread(fnImg)
+    #(thresh, blackAndWhiteImage) = cv2.threshold(imgrgb, 127, 255, cv2.THRESH_BINARY)
     img = preprocess(cv2.imread(fnImg, cv2.IMREAD_GRAYSCALE), Model.imgSize)
+ 
     batch = Batch(None, [img])
     (recognized, probability) = model.inferBatch(batch, True)
     print('Recognized:', '"' + recognized[0] + '"')
     print('Probability:', probability[0])
+    misspelled = [recognized[0]]
+    misspelled = spell.unknown(misspelled)
+    for word in misspelled:
+        print(word, spell.correction(word))
+    #print(spell.correction(recognized[0]))
+    #print(recognized[0])
+    if(len(spell.correction(recognized[0])) > len(recognized[0])):
+        print("erreur d'orthographe avec manque de lettre")
+        imagepil.show()
 
+        imagepil = imagepil.convert('RGB')
+
+        #imagepil.show()
+        indexerrorspell = []
+        print(spell.correction(recognized[0]))
+        print(len(spell.correction(recognized[0])))
+
+        print((recognized[0]))
+        print(len((recognized[0])))
+
+        print(imagepil.size[0])
+        jj=0
+        ind= 0
+        for lettre in (recognized[0]):
+            print(lettre)
+            #print(recognized[0][jj])
+            print("")
+        
+            if(lettre != spell.correction(recognized[0])[jj]):
+                indexerrorspell.append(jj)
+            jj = jj+1    
+
+        nbslices = imagepil.size[0]//len((recognized[0])) 
+        print(nbslices)
+        print(indexerrorspell)
+
+        pixels = imagepil.load() # create the pixel map
+
+        for i in range(nbslices*0,nbslices*(len(recognized[0])) ):   # for every col:
+            for j in range(imagepil.size[1]):    # For every row
+                if(pixels[i,j][0]<100):
+                    pixels[i,j] = (255,0,255)
+
+        for indspell in indexerrorspell:
+            for i in range(nbslices*indspell,nbslices*(indspell+1) ):#(imagepil.size[0]):    # for every col:
+                for j in range(imagepil.size[1]):    # For every row
+                    if(pixels[i,j][0]<100):
+                        pixels[i,j] = (255,0,0) #pixels[i,j] = (i, j, 200) # set the colour accordingly
+
+             
+
+        imagepil.show()
+    if(len(spell.correction(recognized[0])) < len(recognized[0])):
+        print("erreur d'orthographe avec des lettres supplimentaires")
+        imagepil.show()
+
+        imagepil = imagepil.convert('RGB')
+
+        #imagepil.show()
+        indexerrorspell = []
+        indexcharsupp = []
+        print(spell.correction(recognized[0]))
+        print(len(spell.correction(recognized[0])))
+
+        print((recognized[0]))
+        print(len((recognized[0])))
+
+        print(imagepil.size[0])
+        jj=0
+        for lettre in spell.correction(recognized[0]):
+            print(lettre)
+            print(recognized[0][jj])
+            print("")
+        
+            if(lettre != recognized[0][jj]):
+                indexerrorspell.append(jj)
+            jj = jj+1
+        
+        suppletter = len(recognized[0]) - len(spell.correction(recognized[0]))
+
+        nbslices = imagepil.size[0]//len((recognized[0])) 
+        print(nbslices)
+        print(indexerrorspell)
+
+        pixels = imagepil.load() # create the pixel map
+        for indspell in indexerrorspell:
+            for i in range(nbslices*indspell,nbslices*(indspell+1) ):#(imagepil.size[0]):    # for every col:
+                for j in range(imagepil.size[1]):    # For every row
+                    if(pixels[i,j][0]<100):
+                        pixels[i,j] = (255,0,0) #pixels[i,j] = (i, j, 200) # set the colour accordingly
+
+        for i in range(nbslices*(len(recognized[0]) - suppletter),nbslices*(len(recognized[0])) ):   # for every col:
+            for j in range(imagepil.size[1]):    # For every row
+                if(pixels[i,j][0]<100):
+                    pixels[i,j] = (0,255,255)
+
+        imagepil.show()
+    if(len(spell.correction(recognized[0])) == len(recognized[0])):
+        print("erreur d'orthographe")
+
+        imagepil.show()
+
+        imagepil = imagepil.convert('RGB')
+
+        #imagepil.show()
+        indexerrorspell = []
+        print(spell.correction(recognized[0]))
+        print(len(spell.correction(recognized[0])))
+
+        print((recognized[0]))
+        print(len((recognized[0])))
+
+        print(imagepil.size[0])
+        jj=0
+        ind= 0
+        for lettre in spell.correction(recognized[0]):
+            print(lettre)
+            print(recognized[0][jj])
+            print("")
+        
+            if(lettre != recognized[0][jj]):
+                indexerrorspell.append(jj)
+            jj = jj+1    
+
+        nbslices = imagepil.size[0]//len((recognized[0])) 
+        print(nbslices)
+        print(indexerrorspell)
+
+        pixels = imagepil.load() # create the pixel map
+        for indspell in indexerrorspell:
+            for i in range(nbslices*indspell,nbslices*(indspell+1) ):#(imagepil.size[0]):    # for every col:
+                for j in range(imagepil.size[1]):    # For every row
+                    if(pixels[i,j][0]<100):
+                        pixels[i,j] = (255,0,0) #pixels[i,j] = (i, j, 200) # set the colour accordingly
+             
+
+        imagepil.show()
+    #cv2.imshow('mot d\'entrée',imgrgb)
+    #cv2.waitKey(0)
+    #cv2.destroyAllWindows()
 
 def main():
     "main function"

@@ -20,7 +20,7 @@ class Model:
     "minimalistic TF model for HTR"
 
     # model constants
-    batchSize = 50
+    batchSize = 64
     imgSize = (128, 32)
     maxTextLen = 32
 
@@ -54,6 +54,11 @@ class Model:
         (self.sess, self.saver) = self.setupTF()
 
     def setupCNN(self):
+    
+        physical_devices = tf.config.experimental.list_physical_devices('GPU')
+        assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
+        config = tf.config.experimental.set_memory_growth(physical_devices[0], True)
+
         "create CNN layers and return output of these layers"
         cnnIn4d = tf.expand_dims(input=self.inputImgs, axis=3)
 
@@ -96,7 +101,7 @@ class Model:
 
         # BxTxH + BxTxH -> BxTx2H -> BxTx1X2H
         concat = tf.expand_dims(tf.concat([fw, bw], 2), 2)
-
+        
         # project output to chars (including blank): BxTx1x2H -> BxTx1xC -> BxTxC
         kernel = tf.Variable(tf.random.truncated_normal([1, 1, numHidden * 2, len(self.charList) + 1], stddev=0.1))
         self.rnnOut3d = tf.squeeze(tf.nn.atrous_conv2d(value=concat, filters=kernel, rate=1, padding='SAME'), axis=[2])
@@ -130,7 +135,7 @@ class Model:
                                                          beam_width=50)
         elif self.decoderType == DecoderType.WordBeamSearch:
             # import compiled word beam search operation (see https://github.com/githubharald/CTCWordBeamSearch)
-            word_beam_search_module = tf.load_op_library('TFWordBeamSearch.so')
+            word_beam_search_module = tf.compat.v1.load_op_library('../CTCWordBeamSearch/cpp/proj/tf/TFWordBeamSearch.so')
 
             # prepare information about language (dictionary, characters in dataset, characters forming words)
             chars = str().join(self.charList)
